@@ -1,5 +1,5 @@
 {
-  "base_model_name_or_path": "EleutherAI/gpt-neo-125M",
+  "base_model_name_or_path": "EleutherAI/gpt-neo-1.3B",
   "bias": "none",
   "fan_in_fan_out": false,
   "inference_mode": true,
