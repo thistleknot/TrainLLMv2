@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 from common_imports import *
 from functions import (
     create_subset,
@@ -17,28 +14,6 @@ from functions import (
     evaluate,
     CustomTrainer
 )
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[2]:
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -63,9 +38,6 @@ lora_config = LoraConfig(
 device_map = {"": 0}
 
 
-# In[3]:
-
-
 tokenizer = AutoTokenizer.from_pretrained(args['model_id'])
 
 peft_config = PeftConfig.from_pretrained('bits')
@@ -86,16 +58,6 @@ print_trainable_parameters(model)
 model.config.use_cache = False
 
 tokenizer.pad_token = tokenizer.eos_token
-
-
-# In[ ]:
-
-
-
-
-
-# In[10]:
-
 
 print("before load")
 with open('../venv_train_neo/datasets_dict.pkl', 'rb') as f:
@@ -124,21 +86,7 @@ max_train_steps = int(train_epoch_steps * args['epochs'])
 train_dataset = datasets.Dataset.from_dict({"input_ids": train_sequences})
 valid_dataset = datasets.Dataset.from_dict({"input_ids": valid_sequences})
 
-
-# In[ ]:
-
-
-
-
-
-# In[12]:
-
-
 subset_valid_dataset = create_subset(valid_dataset, args['num_eval_examples'])
-
-
-# In[13]:
-
 
 #trainer = Trainer(
 trainer = CustomTrainer(
@@ -167,23 +115,9 @@ trainer = CustomTrainer(
 
 trainer.train()
 
-
-# In[14]:
-
-
 initial_completed_steps = trainer.get_completed_steps()
 
 valid_steps = max(1, int(np.round((initial_completed_steps/train_epoch_steps * valid_epoch_steps),0)))
-
-
-# In[ ]:
-
-
-
-
-
-# In[15]:
-
 
 valid_trainer = CustomTrainer(
     model=trainer.model,
@@ -193,7 +127,7 @@ valid_trainer = CustomTrainer(
         per_device_train_batch_size = args['batch_size'],
         per_device_eval_batch_size = args['batch_size'],
         gradient_accumulation_steps=args['gradient_accumulation_steps'],
-        warmup_steps=int(train_epoch_steps * args['warm_ratio']),
+        #warmup_steps=int(train_epoch_steps * args['warm_ratio']),
         #evaluation_strategy='steps',
         max_steps=max_train_steps,
         learning_rate=args['learning_rate']/10,
@@ -210,47 +144,5 @@ valid_trainer = CustomTrainer(
 
 valid_trainer.train()
 
-
-# In[ ]:
-
-
-
-
-
-# In[22]:
-
-
 valid_trainer.model.save_pretrained('./bitsft')
-
-valid_trainer.model.config.use_cache = True
-
-query_text = (
-    "Context:\n"
-    "Life can be difficult, yet rewarding.\n"
-    "Prompt:\n"
-    "What meaning can be found in life?\n"
-    "Response:\n"
-)
-#attention_mask = torch.ones_like(input_ids)
-generator = pipeline('text-generation', model=valid_trainer.model, tokenizer = tokenizer,
-    min_length=50,
-    max_length=200,
-    temperature=.7,
-    #attention_mask=attention_mask,
-    do_sample=True,
-    top_k=50,
-    top_p=1,
-    num_return_sequences=1,
-    no_repeat_ngram_size=2,
-    num_beams=5,
-    early_stopping=True)
-
-results = generator(query_text, do_sample=True, min_length=50, max_length=200)
-print(results[0]['generated_text'])
-
-
-# In[ ]:
-
-
-
 

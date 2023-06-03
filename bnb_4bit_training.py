@@ -1,14 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 #!pip install bitsandbytes git+https://github.com/huggingface/transformers.git git+https://github.com/huggingface/peft.git git+https://github.com/huggingface/accelerate.git datasets torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
-
-
-# In[2]:
-
 
 ###Masked language Modeling
 """
@@ -47,10 +40,6 @@ data_collator = transformers.DataCollatorForLanguageModeling(tokenizer, mlm=True
 Please note that these changes are applicable only if you choose GPT-2 or BERT models for MLM tasks. Since your current model is a GPT-NEO-based model, applying MLM directly might not be straightforward or guaranteed to work well.
 """
 
-
-# In[ ]:
-
-
 from common_imports import *
 from functions import (
     create_subset,
@@ -64,28 +53,6 @@ from functions import (
     evaluate,
     CustomTrainer
 )
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -109,10 +76,6 @@ lora_config = LoraConfig(
 
 device_map = {"": 0}
 
-
-# In[ ]:
-
-
 tokenizer = AutoTokenizer.from_pretrained(args['model_id'])
 model = AutoModelForCausalLM.from_pretrained(args['model_id'], quantization_config=bnb_config, device_map=device_map)
 
@@ -125,16 +88,6 @@ model.config.use_cache = False
 print_trainable_parameters(model)
 
 tokenizer.pad_token = tokenizer.eos_token
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
 
 print("before load")
 with open('../venv_train_neo/datasets_dict.pkl', 'rb') as f:
@@ -194,34 +147,8 @@ train_dataset = datasets.Dataset.from_dict({"input_ids": train_sequences})
 valid_dataset = datasets.Dataset.from_dict({"input_ids": valid_sequences})
 post_train_dataset = datasets.Dataset.from_dict({"input_ids": post_train_sequences})
 
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
 # Replace 'valid_dataset' with your current evaluation dataset variable
 subset_valid_dataset = create_subset(valid_dataset, args['num_eval_examples'])
-
-
-# In[ ]:
-
 
 #trainer = Trainer(
 trainer = CustomTrainer(
@@ -250,29 +177,9 @@ trainer = CustomTrainer(
 
 trainer.train()
 
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
 initial_completed_steps = trainer.get_completed_steps()
 
 valid_steps = max(1, int(np.round((initial_completed_steps/train_epoch_steps * valid_epoch_steps),0)))
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
 
 valid_trainer = CustomTrainer(
     model=trainer.model,
@@ -282,7 +189,7 @@ valid_trainer = CustomTrainer(
         per_device_train_batch_size = args['batch_size'],
         per_device_eval_batch_size = args['batch_size'],
         gradient_accumulation_steps=args['gradient_accumulation_steps'],
-        warmup_steps=int(train_epoch_steps * args['warm_ratio']),
+        #warmup_steps=int(train_epoch_steps * args['warm_ratio']),
         #evaluation_strategy='steps',
         max_steps=valid_steps,
         learning_rate=args['learning_rate'],
@@ -299,27 +206,7 @@ valid_trainer = CustomTrainer(
 
 valid_trainer.train()
 
-
-# In[ ]:
-
-
 post_train_steps = max(1, int(np.round((initial_completed_steps/train_epoch_steps * post_train_epoch_steps),0)))
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
 
 post_train_trainer = CustomTrainer(
     model=valid_trainer.model,
@@ -329,7 +216,7 @@ post_train_trainer = CustomTrainer(
         per_device_train_batch_size = args['batch_size'],
         per_device_eval_batch_size = args['batch_size'],
         gradient_accumulation_steps=args['gradient_accumulation_steps'],
-        warmup_steps=int(train_epoch_steps * args['warm_ratio']),
+        #warmup_steps=int(train_epoch_steps * args['warm_ratio']),
         #evaluation_strategy='steps',
         max_steps=post_train_steps,
         learning_rate=args['learning_rate'],
@@ -346,13 +233,9 @@ post_train_trainer = CustomTrainer(
 
 post_train_trainer.train()
 
-
-# In[ ]:
-
-
 with open("bits/bnb_config.json", "w") as f:
     json.dump(bnb_config.to_dict(), f)
-    
+
 post_train_trainer.model.save_pretrained('./bits')
 
 
