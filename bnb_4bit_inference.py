@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 from common_imports import *
 from functions import (
     create_subset,
@@ -17,16 +14,6 @@ from functions import (
     evaluate,
     CustomTrainer
 )
-
-
-# In[ ]:
-
-
-
-
-
-# In[2]:
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -50,16 +37,6 @@ lora_config = LoraConfig(
 
 device_map = {"": 0}
 
-
-# In[ ]:
-
-
-
-
-
-# In[12]:
-
-
 infer_peft_config = PeftConfig.from_pretrained('bitsft')
 
 infer_model = AutoModelForCausalLM.from_pretrained(
@@ -75,30 +52,23 @@ print_trainable_parameters(infer_model)
 #only necessary when use with the above
 infer_model.model.config.use_cache = True
 
-
-# In[ ]:
-
-
-
-
-
-# In[13]:
-
-
 tokenizer = AutoTokenizer.from_pretrained(args['model_id'])
 tokenizer.pad_token = tokenizer.eos_token
 
-
-# In[15]:
-
-
 query_text = (
     "Context:\n"
-    "Life can be difficult, yet rewarding.\n"
+    "Jane picked 2 apples and 2 oranges from a nearby grove.\n"
     "Prompt:\n"
-    "What meaning can be found in life?\n"
+    "Let's think step by step.  How many pieces of fruit does Jane have?\nBe sure to explain your reasoning.\n"
     "Response:\n"
 )
+
+query_text = (
+    "Prompt:\n"
+    "What is the meaning of life?\n"
+    "Response:\n"
+)
+
 #attention_mask = torch.ones_like(input_ids)
 generator = pipeline('text-generation', model=infer_model, tokenizer = tokenizer,
     min_length=50,
@@ -110,15 +80,9 @@ generator = pipeline('text-generation', model=infer_model, tokenizer = tokenizer
     top_p=1,
     num_return_sequences=1,
     no_repeat_ngram_size=2,
-    num_beams=1,
+    num_beams=5,
     early_stopping=True)
 
+#results = generator(query_text, do_sample=True, min_length=50, max_length=200)
 results = generator(query_text)
 print(results[0]['generated_text'])
-
-
-# In[ ]:
-
-
-
-
